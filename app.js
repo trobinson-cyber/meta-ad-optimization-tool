@@ -31,7 +31,7 @@ const demoAssets = [
 
 let assets = [...demoAssets];
 
-const accounts = [
+const demoAccounts = [
   {
     id: "act-main",
     name: "Main Brand",
@@ -102,20 +102,25 @@ const baseVariants = [
   },
 ];
 
+let accounts = [...demoAccounts];
 let selectedAccountId = accounts[0].id;
-let variantsByAccount = Object.fromEntries(
-  accounts.map((account, accountIndex) => [
-    account.id,
-    baseVariants.map((variant, index) => ({
-      ...variant,
-      id: index + 1,
-      accountId: account.id,
-      status: "pending",
-      score: variant.score - accountIndex * 3,
-      cpa: variant.cpa + accountIndex * 5,
-    })),
-  ]),
-);
+let variantsByAccount = buildInitialVariants(accounts);
+
+function buildInitialVariants(accountList) {
+  return Object.fromEntries(
+    accountList.map((account, accountIndex) => [
+      account.id,
+      baseVariants.map((variant, index) => ({
+        ...variant,
+        id: index + 1,
+        accountId: account.id,
+        status: "pending",
+        score: variant.score - accountIndex * 3,
+        cpa: variant.cpa + accountIndex * 5,
+      })),
+    ]),
+  );
+}
 
 const assetList = document.querySelector("#assetList");
 const variantList = document.querySelector("#variantList");
@@ -132,6 +137,11 @@ function getSelectedAccount() {
 }
 
 function getSelectedVariants() {
+  if (!variantsByAccount[selectedAccountId]) {
+    variantsByAccount[selectedAccountId] = buildInitialVariants([getSelectedAccount()])[
+      selectedAccountId
+    ];
+  }
   return variantsByAccount[selectedAccountId];
 }
 
@@ -201,6 +211,41 @@ async function syncGoogleDriveAssets() {
   } finally {
     button.disabled = false;
     button.textContent = "Sync";
+  }
+}
+
+async function connectMeta() {
+  try {
+    const accountsResponse = await fetch("/api/meta-ad-accounts");
+    if (accountsResponse.ok) {
+      const data = await accountsResponse.json();
+      const metaAccounts = Array.isArray(data.accounts) ? data.accounts : [];
+
+      if (metaAccounts.length) {
+        accounts = metaAccounts;
+        selectedAccountId = accounts[0].id;
+        variantsByAccount = buildInitialVariants(accounts);
+        renderAccountControls();
+        hydrateAccountFields();
+        renderVariants();
+        renderApprovals();
+        renderRecommendations();
+        drawChart();
+        showToast(`${accounts.length} Meta ad accounts loaded.`);
+        return;
+      }
+    }
+
+    const authResponse = await fetch("/api/meta-auth-url");
+    if (!authResponse.ok) {
+      const error = await authResponse.json().catch(() => ({}));
+      throw new Error(error.error || "Meta connection is not configured yet.");
+    }
+
+    const data = await authResponse.json();
+    window.location.href = data.url;
+  } catch (error) {
+    showToast(`${error.message} Demo accounts are still available.`);
   }
 }
 
@@ -486,6 +531,7 @@ function switchAccount(accountId) {
 }
 
 document.querySelector("#generateBtn").addEventListener("click", generateVariants);
+document.querySelector("#connectMeta").addEventListener("click", connectMeta);
 document.querySelector("#connectDrive").addEventListener("click", connectGoogleDrive);
 document.querySelector("#syncAssets").addEventListener("click", syncGoogleDriveAssets);
 document.querySelector("#analyzeBtn").addEventListener("click", () => {
