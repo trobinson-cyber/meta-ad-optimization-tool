@@ -1,4 +1,4 @@
-const assets = [
+const demoAssets = [
   {
     name: "Product dashboard image",
     type: "Image",
@@ -28,6 +28,8 @@ const assets = [
       "linear-gradient(135deg, #ffffff 0%, #ffffff 45%, #6f4cc3 46%, #0d7f8b 100%)",
   },
 ];
+
+let assets = [...demoAssets];
 
 const accounts = [
   {
@@ -145,7 +147,7 @@ function renderAssets() {
     .map(
       (asset) => `
         <article class="asset-card">
-          <div class="asset-thumb" style="background: ${asset.background}"></div>
+          <div class="asset-thumb" style="${asset.thumbnail ? `background-image: url('${asset.thumbnail}')` : `background: ${asset.background}`}"></div>
           <div>
             <strong>${asset.name}</strong>
             <small>${asset.type} - ${asset.source}</small>
@@ -154,6 +156,52 @@ function renderAssets() {
       `,
     )
     .join("");
+}
+
+async function connectGoogleDrive() {
+  const response = await fetch("/api/google-auth-url");
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    showToast(error.error || "Google Drive connection is not configured yet.");
+    return;
+  }
+
+  const data = await response.json();
+  window.location.href = data.url;
+}
+
+async function syncGoogleDriveAssets() {
+  const button = document.querySelector("#syncAssets");
+  button.disabled = true;
+  button.textContent = "Syncing...";
+
+  try {
+    const response = await fetch("/api/google-drive-assets");
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || "Google Drive assets are not connected yet.");
+    }
+
+    const data = await response.json();
+    const driveAssets = Array.isArray(data.assets) ? data.assets : [];
+    if (!driveAssets.length) {
+      throw new Error("No image or copy assets were found in Google Drive.");
+    }
+
+    assets = driveAssets.map((asset, index) => ({
+      ...asset,
+      background: demoAssets[index % demoAssets.length].background,
+    }));
+    renderAssets();
+    showToast(`${assets.length} Google Drive assets synced.`);
+  } catch (error) {
+    assets = [...demoAssets];
+    renderAssets();
+    showToast(`${error.message} Showing demo assets.`);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Sync";
+  }
 }
 
 function renderAccountControls() {
@@ -270,11 +318,21 @@ function renderRecommendations() {
     .join("");
 }
 
-function generateVariants() {
-  const account = getSelectedAccount();
-  const objective = document.querySelector("#objective").value;
-  const audience = document.querySelector("#audience").value;
-  const guidelines = document.querySelector("#guidelines").value;
+function normalizeGeneratedVariants(generated, account) {
+  return generated.slice(0, 4).map((variant, index) => ({
+    id: index + 1,
+    accountId: selectedAccountId,
+    headline: variant.headline || `Generated ad variant ${index + 1}`,
+    body: variant.body || `Generated copy prepared for ${account.name}.`,
+    image: variant.image || assets[index % assets.length].name.toLowerCase(),
+    score: Number(variant.score) || 86 - index * 4,
+    status: "pending",
+    cpa: Number(variant.cpa) || 30 + index * 4,
+    ctr: Number(variant.ctr) || 2.6 - index * 0.25,
+  }));
+}
+
+function generateDemoVariants(account, objective, audience, guidelines) {
   const angles = [
     "Move from brief to live campaign faster",
     "Keep every ad variant on brand",
@@ -282,7 +340,7 @@ function generateVariants() {
     "Review Meta ad sets in one clean queue",
   ];
 
-  variantsByAccount[selectedAccountId] = angles.map((angle, index) => ({
+  return angles.map((angle, index) => ({
     id: index + 1,
     accountId: selectedAccountId,
     headline: `${angle}`,
@@ -293,12 +351,70 @@ function generateVariants() {
     cpa: 27 + index * 4,
     ctr: 3.1 - index * 0.35,
   }));
+}
+
+async function requestGeneratedVariants(account, objective, audience, conversion, guidelines) {
+  const response = await fetch("/api/generate-ads", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      account,
+      objective,
+      audience,
+      conversion,
+      guidelines,
+      assets,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || "Generation route unavailable.");
+  }
+
+  const data = await response.json();
+  return normalizeGeneratedVariants(data.variants || [], account);
+}
+
+async function generateVariants() {
+  const account = getSelectedAccount();
+  const objective = document.querySelector("#objective").value;
+  const audience = document.querySelector("#audience").value;
+  const conversion = document.querySelector("#conversion").value;
+  const guidelines = document.querySelector("#guidelines").value;
+  const button = document.querySelector("#generateBtn");
+
+  button.disabled = true;
+  button.textContent = "Generating...";
+
+  try {
+    variantsByAccount[selectedAccountId] = await requestGeneratedVariants(
+      account,
+      objective,
+      audience,
+      conversion,
+      guidelines,
+    );
+    showToast(`GPT-generated variants are ready for ${account.name}.`);
+  } catch (error) {
+    variantsByAccount[selectedAccountId] = generateDemoVariants(
+      account,
+      objective,
+      audience,
+      guidelines,
+    );
+    showToast(`${error.message} Demo variants were generated instead.`);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Generate variants";
+  }
 
   renderVariants();
   renderApprovals();
   renderRecommendations();
   drawChart();
-  showToast(`GPT-generated variants are ready for ${account.name}.`);
 }
 
 function handleApproval(event) {
@@ -370,10 +486,8 @@ function switchAccount(accountId) {
 }
 
 document.querySelector("#generateBtn").addEventListener("click", generateVariants);
-document.querySelector("#syncAssets").addEventListener("click", () => {
-  renderAssets();
-  showToast("Google Drive assets synced into the campaign workspace.");
-});
+document.querySelector("#connectDrive").addEventListener("click", connectGoogleDrive);
+document.querySelector("#syncAssets").addEventListener("click", syncGoogleDriveAssets);
 document.querySelector("#analyzeBtn").addEventListener("click", () => {
   drawChart();
   renderRecommendations();

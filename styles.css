@@ -190,6 +190,7 @@ h2 {
 
 .topbar-actions,
 .section-heading,
+.asset-actions,
 .variant-actions,
 .approval-actions {
   display: flex;
@@ -423,6 +424,11 @@ textarea {
 .recommendations {
   display: grid;
   gap: 12px;
+}
+
+.asset-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .asset-card {
