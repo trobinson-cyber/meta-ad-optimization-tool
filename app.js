@@ -131,6 +131,8 @@ const toast = document.querySelector("#toast");
 const accountSelect = document.querySelector("#accountSelect");
 const pixelSelect = document.querySelector("#pixel");
 const accountSummary = document.querySelector("#accountSummary");
+const conversionSelect = document.querySelector("#conversion");
+const defaultEvents = ["Purchase", "Lead", "Subscribe", "Schedule"];
 
 function getSelectedAccount() {
   return accounts.find((account) => account.id === selectedAccountId);
@@ -232,6 +234,7 @@ async function connectMeta() {
         renderRecommendations();
         drawChart();
         showToast(`${accounts.length} Meta ad accounts loaded.`);
+        loadPixelsForSelectedAccount();
         return;
       }
     }
@@ -255,9 +258,24 @@ function renderAccountControls() {
     .join("");
   accountSelect.value = selectedAccountId;
 
-  pixelSelect.innerHTML = accounts
-    .map((account) => `<option value="${account.pixel}">${account.pixel}</option>`)
+  renderPixelOptions(getSelectedAccount());
+  renderEventOptions(getSelectedAccount());
+}
+
+function renderPixelOptions(account) {
+  const pixels = Array.isArray(account.pixels) && account.pixels.length
+    ? account.pixels
+    : [{ id: account.pixel, name: account.pixel }];
+
+  pixelSelect.innerHTML = pixels
+    .map((pixel) => `<option value="${pixel.name}" data-pixel-id="${pixel.id}">${pixel.name}</option>`)
     .join("");
+}
+
+function renderEventOptions(account) {
+  const selectedPixel = account.pixels?.find((pixel) => pixel.name === account.pixel);
+  const events = selectedPixel?.events || defaultEvents;
+  conversionSelect.innerHTML = events.map((eventName) => `<option>${eventName}</option>`).join("");
 }
 
 function hydrateAccountFields() {
@@ -265,7 +283,9 @@ function hydrateAccountFields() {
   document.querySelector("#budget").value = account.budget;
   document.querySelector("#audience").value = account.audience;
   document.querySelector("#objective").value = account.objective;
-  document.querySelector("#conversion").value = account.event;
+  renderPixelOptions(account);
+  renderEventOptions(account);
+  conversionSelect.value = account.event;
   pixelSelect.value = account.pixel;
 
   accountSummary.innerHTML = `
@@ -286,6 +306,35 @@ function hydrateAccountFields() {
       <strong>Approval required</strong>
     </div>
   `;
+}
+
+async function loadPixelsForSelectedAccount() {
+  const account = getSelectedAccount();
+  if (!account?.metaId?.startsWith("act_")) return;
+
+  try {
+    const response = await fetch(
+      `/api/meta-pixels?adAccountId=${encodeURIComponent(account.metaId)}`,
+    );
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || "Meta pixels could not be loaded.");
+    }
+
+    const data = await response.json();
+    const pixels = Array.isArray(data.pixels) ? data.pixels : [];
+    if (!pixels.length) {
+      throw new Error("No Meta pixels were found for this ad account.");
+    }
+
+    account.pixels = pixels;
+    account.pixel = pixels[0].name;
+    account.event = pixels[0].events?.[0] || account.event;
+    hydrateAccountFields();
+    showToast(`${pixels.length} Meta pixels loaded for ${account.name}.`);
+  } catch (error) {
+    showToast(error.message);
+  }
 }
 
 function renderVariants() {
@@ -528,6 +577,7 @@ function switchAccount(accountId) {
   renderRecommendations();
   drawChart();
   showToast(`Switched to ${getSelectedAccount().name}.`);
+  loadPixelsForSelectedAccount();
 }
 
 document.querySelector("#generateBtn").addEventListener("click", generateVariants);
@@ -541,6 +591,17 @@ document.querySelector("#analyzeBtn").addEventListener("click", () => {
 });
 approvalList.addEventListener("click", handleApproval);
 accountSelect.addEventListener("change", (event) => switchAccount(event.target.value));
+pixelSelect.addEventListener("change", () => {
+  const account = getSelectedAccount();
+  account.pixel = pixelSelect.value;
+  renderEventOptions(account);
+  account.event = conversionSelect.value;
+  hydrateAccountFields();
+});
+conversionSelect.addEventListener("change", () => {
+  getSelectedAccount().event = conversionSelect.value;
+  hydrateAccountFields();
+});
 
 renderAccountControls();
 hydrateAccountFields();
