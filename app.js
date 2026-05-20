@@ -369,10 +369,20 @@ function renderApprovals() {
             <strong>${variant.headline}</strong>
             <p>${variant.body}</p>
             <small>Status: ${variant.status}</small>
+            ${
+              variant.draft
+                ? `<small>Meta draft: Campaign ${variant.draft.campaignId} / Ad Set ${variant.draft.adSetId}</small>`
+                : ""
+            }
           </div>
           <div class="approval-actions">
             <button class="approve" type="button" data-action="approved" ${variant.status !== "pending" ? "disabled" : ""}>Approve</button>
             <button class="reject" type="button" data-action="rejected" ${variant.status !== "pending" ? "disabled" : ""}>Reject</button>
+            ${
+              variant.status === "approved" && !variant.draft
+                ? `<button class="draft" type="button" data-action="draft">Create Draft</button>`
+                : ""
+            }
           </div>
         </article>
       `,
@@ -511,6 +521,36 @@ async function generateVariants() {
   drawChart();
 }
 
+async function createMetaDraft(variantId) {
+  const account = getSelectedAccount();
+  const variant = getSelectedVariants().find((item) => item.id === variantId);
+  if (!variant) return;
+
+  try {
+    const response = await fetch("/api/meta-create-draft", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ account, variant }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || "Meta draft creation failed.");
+    }
+
+    const data = await response.json();
+    variantsByAccount[selectedAccountId] = getSelectedVariants().map((item) =>
+      item.id === variantId ? { ...item, draft: data.draft } : item,
+    );
+    renderApprovals();
+    showToast("Paused Meta campaign draft created.");
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
 function handleApproval(event) {
   const button = event.target.closest("button[data-action]");
   if (!button) return;
@@ -518,6 +558,11 @@ function handleApproval(event) {
   const card = button.closest(".approval-card");
   const id = Number(card.dataset.id);
   const action = button.dataset.action;
+  if (action === "draft") {
+    createMetaDraft(id);
+    return;
+  }
+
   variantsByAccount[selectedAccountId] = getSelectedVariants().map((variant) =>
     variant.id === id ? { ...variant, status: action } : variant,
   );
