@@ -547,7 +547,7 @@ async function createMetaDraft(variantId) {
     renderApprovals();
     showToast("Paused Meta campaign draft created.");
   } catch (error) {
-    showToast(error.message);
+    showToast(`Meta draft failed: ${error.message}`);
   }
 }
 
