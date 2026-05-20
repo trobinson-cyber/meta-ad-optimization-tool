@@ -62,6 +62,7 @@ module.exports = async function handler(req, res) {
   const account = body.account || {};
   const variant = body.variant || {};
   const page = body.page || {};
+  const creativeInput = body.creative || {};
   const destinationUrl = String(body.destinationUrl || "").trim();
   const adAccountId = String(account.metaId || "");
 
@@ -128,16 +129,17 @@ module.exports = async function handler(req, res) {
     const adSet = await metaPost(`${adAccountId}/adsets`, adSetPayload);
 
     const creative = await metaPost(`${adAccountId}/adcreatives`, {
-      name: `Draft Creative - ${variant.headline || "Variant"}`,
+      name: `Draft Creative - ${creativeInput.headline || variant.headline || "Variant"}`,
       object_story_spec: JSON.stringify({
         page_id: page.id,
         link_data: {
           link: destinationUrl,
-          message: variant.body || "Generated ad copy",
-          name: variant.headline || "Generated ad",
-          description: variant.image || "Generated creative direction",
+          picture: creativeInput.imageUrl,
+          message: creativeInput.body || variant.body || "Generated ad copy",
+          name: creativeInput.headline || variant.headline || "Generated ad",
+          description: creativeInput.description || variant.image || "Generated creative direction",
           call_to_action: {
-            type: "LEARN_MORE",
+            type: creativeInput.cta || "LEARN_MORE",
             value: {
               link: destinationUrl,
             },
