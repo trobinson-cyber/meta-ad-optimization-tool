@@ -132,7 +132,10 @@ const accountSelect = document.querySelector("#accountSelect");
 const pixelSelect = document.querySelector("#pixel");
 const accountSummary = document.querySelector("#accountSummary");
 const conversionSelect = document.querySelector("#conversion");
+const pageSelect = document.querySelector("#pageSelect");
+const destinationUrlInput = document.querySelector("#destinationUrl");
 const defaultEvents = ["Purchase", "Lead", "Subscribe", "Schedule"];
+let metaPages = [];
 
 function getSelectedAccount() {
   return accounts.find((account) => account.id === selectedAccountId);
@@ -234,6 +237,7 @@ async function connectMeta() {
         renderRecommendations();
         drawChart();
         showToast(`${accounts.length} Meta ad accounts loaded.`);
+        loadMetaPages();
         loadPixelsForSelectedAccount();
         return;
       }
@@ -250,6 +254,34 @@ async function connectMeta() {
   } catch (error) {
     showToast(`${error.message} Demo accounts are still available.`);
   }
+}
+
+async function loadMetaPages() {
+  try {
+    const response = await fetch("/api/meta-pages");
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || "Meta Pages could not be loaded.");
+    }
+
+    const data = await response.json();
+    metaPages = Array.isArray(data.pages) ? data.pages : [];
+    renderPageOptions();
+    showToast(`${metaPages.length} Facebook Pages loaded.`);
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+function renderPageOptions() {
+  if (!metaPages.length) {
+    pageSelect.innerHTML = `<option value="">No Pages loaded</option>`;
+    return;
+  }
+
+  pageSelect.innerHTML = metaPages
+    .map((page) => `<option value="${page.id}">${page.name}</option>`)
+    .join("");
 }
 
 function renderAccountControls() {
@@ -373,7 +405,7 @@ function renderApprovals() {
               variant.draft
                 ? `<small>Meta draft: Campaign ${variant.draft.campaignId}${
                     variant.draft.adSetId ? ` / Ad Set ${variant.draft.adSetId}` : ""
-                  }</small>`
+                  }${variant.draft.adId ? ` / Ad ${variant.draft.adId}` : ""}</small>`
                 : ""
             }
             ${variant.draft?.note ? `<small>${variant.draft.note}</small>` : ""}
@@ -527,6 +559,8 @@ async function generateVariants() {
 async function createMetaDraft(variantId) {
   const account = getSelectedAccount();
   const variant = getSelectedVariants().find((item) => item.id === variantId);
+  const page = metaPages.find((item) => item.id === pageSelect.value);
+  const destinationUrl = destinationUrlInput.value;
   if (!variant) return;
 
   try {
@@ -535,7 +569,7 @@ async function createMetaDraft(variantId) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ account, variant }),
+      body: JSON.stringify({ account, variant, page, destinationUrl }),
     });
 
     if (!response.ok) {
