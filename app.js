@@ -539,8 +539,15 @@ async function createMetaDraft(variantId) {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || "Meta draft creation failed.");
+      const errorText = await response.text();
+      let error = {};
+      try {
+        error = JSON.parse(errorText);
+      } catch {
+        error = { error: errorText };
+      }
+      const stage = error.stage ? `${error.stage}: ` : "";
+      throw new Error(`${stage}${error.error || "Meta draft creation failed."}`);
     }
 
     const data = await response.json();

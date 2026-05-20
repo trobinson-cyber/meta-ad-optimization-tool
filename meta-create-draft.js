@@ -29,7 +29,10 @@ async function metaPost(path, payload) {
   const data = await response.json();
   if (!response.ok) {
     const message = data.error?.error_user_msg || data.error?.message || "Meta request failed.";
-    throw new Error(message);
+    const details = data.error
+      ? `Meta ${data.error.type || "error"} ${data.error.code || ""}: ${message}`
+      : message;
+    throw new Error(details);
   }
   return data;
 }
@@ -43,6 +46,7 @@ module.exports = async function handler(req, res) {
   if (!process.env.META_ACCESS_TOKEN) {
     return res.status(500).json({
       error: "Missing META_ACCESS_TOKEN in Vercel environment variables.",
+      stage: "config",
     });
   }
 
@@ -52,7 +56,10 @@ module.exports = async function handler(req, res) {
   const adAccountId = String(account.metaId || "");
 
   if (!/^act_\d+$/.test(adAccountId)) {
-    return res.status(400).json({ error: "A valid selected Meta ad account is required." });
+    return res.status(400).json({
+      error: `A valid selected Meta ad account is required. Received "${adAccountId || "blank"}".`,
+      stage: "input",
+    });
   }
 
   const budget = Math.max(Number(account.budget) || 50, 5);
@@ -62,13 +69,15 @@ module.exports = async function handler(req, res) {
     .slice(0, 10)}`;
 
   try {
-    const campaign = await metaPost(`${adAccountId}/campaigns`, {
+    const campaignPayload = {
       name: campaignName,
       objective: "OUTCOME_TRAFFIC",
       buying_type: "AUCTION",
       status: "PAUSED",
       special_ad_categories: "[]",
-    });
+    };
+
+    const campaign = await metaPost(`${adAccountId}/campaigns`, campaignPayload);
 
     if (process.env.META_CREATE_ADSET !== "true") {
       return res.status(200).json({
@@ -114,6 +123,10 @@ module.exports = async function handler(req, res) {
       },
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message || "Unable to create Meta draft." });
+    return res.status(500).json({
+      error: error.message || "Unable to create Meta draft.",
+      stage: "meta-create-draft",
+      adAccountId,
+    });
   }
 };
