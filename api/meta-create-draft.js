@@ -38,6 +38,14 @@ async function metaPost(path, payload) {
 }
 
 module.exports = async function handler(req, res) {
+  if (req.method === "GET") {
+    return res.status(200).json({
+      route: "meta-create-draft",
+      version: "2026-05-20-budget-sharing-v2",
+      sendsBudgetSharingFlag: true,
+    });
+  }
+
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Use POST for Meta draft creation." });
