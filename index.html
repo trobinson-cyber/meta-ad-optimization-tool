@@ -21,6 +21,7 @@
           <a href="#workspace" class="active">Workspace</a>
           <a href="#assets">Drive assets</a>
           <a href="#variants">Variants</a>
+          <a href="#designer">Designer</a>
           <a href="#approval">Approval</a>
           <a href="#performance">Performance</a>
         </nav>
@@ -194,6 +195,69 @@
               </div>
             </div>
             <div class="variant-list" id="variantList"></div>
+          </div>
+
+          <div class="panel designer-panel" id="designer">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Ad designer</p>
+                <h2>Creative preview</h2>
+              </div>
+              <button class="secondary-button" type="button" id="useTopVariant">Use top variant</button>
+            </div>
+            <div class="designer-grid">
+              <div class="creative-form">
+                <label>
+                  Primary text
+                  <textarea id="creativeBody"></textarea>
+                </label>
+                <label>
+                  Headline
+                  <input id="creativeHeadline" />
+                </label>
+                <label>
+                  Description
+                  <input id="creativeDescription" />
+                </label>
+                <label>
+                  Image URL
+                  <input id="creativeImageUrl" value="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80" />
+                </label>
+                <label>
+                  CTA
+                  <select id="creativeCta">
+                    <option>LEARN_MORE</option>
+                    <option>SIGN_UP</option>
+                    <option>SHOP_NOW</option>
+                    <option>CONTACT_US</option>
+                    <option>GET_QUOTE</option>
+                  </select>
+                </label>
+                <label>
+                  Destination URL
+                  <input id="creativeDestinationUrl" value="https://example.com" />
+                </label>
+              </div>
+              <article class="ad-preview" aria-label="Ad preview">
+                <div class="preview-header">
+                  <div class="page-dot">A</div>
+                  <div>
+                    <strong id="previewPage">Ad Optimization Tool</strong>
+                    <small>Sponsored</small>
+                  </div>
+                </div>
+                <p id="previewBody"></p>
+                <div class="preview-image" id="previewImage"></div>
+                <div class="preview-link">
+                  <div>
+                    <small id="previewDomain">example.com</small>
+                    <strong id="previewHeadline"></strong>
+                    <span id="previewDescription"></span>
+                  </div>
+                  <button type="button" id="previewCta">Learn More</button>
+                </div>
+              </article>
+            </div>
           </div>
 
           <div class="panel approval-panel" id="approval">

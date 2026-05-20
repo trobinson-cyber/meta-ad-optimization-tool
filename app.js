@@ -134,6 +134,14 @@ const accountSummary = document.querySelector("#accountSummary");
 const conversionSelect = document.querySelector("#conversion");
 const pageSelect = document.querySelector("#pageSelect");
 const destinationUrlInput = document.querySelector("#destinationUrl");
+const creativeFields = {
+  body: document.querySelector("#creativeBody"),
+  headline: document.querySelector("#creativeHeadline"),
+  description: document.querySelector("#creativeDescription"),
+  imageUrl: document.querySelector("#creativeImageUrl"),
+  cta: document.querySelector("#creativeCta"),
+  destinationUrl: document.querySelector("#creativeDestinationUrl"),
+};
 const defaultEvents = ["Purchase", "Lead", "Subscribe", "Schedule"];
 let metaPages = [];
 
@@ -282,6 +290,47 @@ function renderPageOptions() {
   pageSelect.innerHTML = metaPages
     .map((page) => `<option value="${page.id}">${page.name}</option>`)
     .join("");
+}
+
+function getCreativeDesign() {
+  return {
+    body: creativeFields.body.value,
+    headline: creativeFields.headline.value,
+    description: creativeFields.description.value,
+    imageUrl: creativeFields.imageUrl.value,
+    cta: creativeFields.cta.value,
+    destinationUrl: creativeFields.destinationUrl.value,
+  };
+}
+
+function setCreativeFromVariant(variant) {
+  const account = getSelectedAccount();
+  creativeFields.body.value = variant.body;
+  creativeFields.headline.value = variant.headline;
+  creativeFields.description.value = variant.image;
+  creativeFields.destinationUrl.value = destinationUrlInput.value || creativeFields.destinationUrl.value;
+  destinationUrlInput.value = creativeFields.destinationUrl.value;
+  document.querySelector("#previewPage").textContent = metaPages[0]?.name || account.name || "Ad Optimization Tool";
+  updateAdPreview();
+}
+
+function updateAdPreview() {
+  const creative = getCreativeDesign();
+  const page = metaPages.find((item) => item.id === pageSelect.value);
+  const destination = creative.destinationUrl || "https://example.com";
+  let host = "example.com";
+  try {
+    host = new URL(destination).hostname.replace(/^www\./, "");
+  } catch {}
+
+  document.querySelector("#previewPage").textContent =
+    page?.name || getSelectedAccount().name || "Ad Optimization Tool";
+  document.querySelector("#previewBody").textContent = creative.body;
+  document.querySelector("#previewHeadline").textContent = creative.headline;
+  document.querySelector("#previewDescription").textContent = creative.description;
+  document.querySelector("#previewDomain").textContent = host;
+  document.querySelector("#previewCta").textContent = creative.cta.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+  document.querySelector("#previewImage").style.backgroundImage = `url("${creative.imageUrl}")`;
 }
 
 function renderAccountControls() {
@@ -554,13 +603,15 @@ async function generateVariants() {
   renderApprovals();
   renderRecommendations();
   drawChart();
+  setCreativeFromVariant(getSelectedVariants()[0]);
 }
 
 async function createMetaDraft(variantId) {
   const account = getSelectedAccount();
   const variant = getSelectedVariants().find((item) => item.id === variantId);
   const page = metaPages.find((item) => item.id === pageSelect.value);
-  const destinationUrl = destinationUrlInput.value;
+  const creative = getCreativeDesign();
+  const destinationUrl = creative.destinationUrl || destinationUrlInput.value;
   if (!variant) return;
 
   try {
@@ -569,7 +620,7 @@ async function createMetaDraft(variantId) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ account, variant, page, destinationUrl }),
+      body: JSON.stringify({ account, variant, page, destinationUrl, creative }),
     });
 
     if (!response.ok) {
@@ -683,6 +734,20 @@ document.querySelector("#connectMeta").addEventListener("click", connectMeta);
 document.querySelector("#openAdsManager").addEventListener("click", openAdsManager);
 document.querySelector("#connectDrive").addEventListener("click", connectGoogleDrive);
 document.querySelector("#syncAssets").addEventListener("click", syncGoogleDriveAssets);
+document.querySelector("#useTopVariant").addEventListener("click", () => {
+  setCreativeFromVariant(getSelectedVariants()[0]);
+  showToast("Top variant loaded into the ad designer.");
+});
+Object.values(creativeFields).forEach((field) => {
+  field.addEventListener("input", () => {
+    if (field === creativeFields.destinationUrl) {
+      destinationUrlInput.value = field.value;
+    }
+    updateAdPreview();
+  });
+  field.addEventListener("change", updateAdPreview);
+});
+pageSelect.addEventListener("change", updateAdPreview);
 document.querySelector("#analyzeBtn").addEventListener("click", () => {
   drawChart();
   renderRecommendations();
@@ -709,3 +774,4 @@ renderVariants();
 renderApprovals();
 renderRecommendations();
 drawChart();
+setCreativeFromVariant(getSelectedVariants()[0]);
