@@ -65,9 +65,22 @@ module.exports = async function handler(req, res) {
     const campaign = await metaPost(`${adAccountId}/campaigns`, {
       name: campaignName,
       objective: "OUTCOME_TRAFFIC",
+      buying_type: "AUCTION",
       status: "PAUSED",
       special_ad_categories: "[]",
     });
+
+    if (process.env.META_CREATE_ADSET !== "true") {
+      return res.status(200).json({
+        draft: {
+          campaignId: campaign.id,
+          adSetId: null,
+          status: "PAUSED",
+          name: campaignName,
+          note: "Paused campaign draft created. Set META_CREATE_ADSET=true after adding a Meta Page ID and final targeting.",
+        },
+      });
+    }
 
     const adSetPayload = {
       name: `Draft Ad Set - ${variant.headline || "Variant"}`,

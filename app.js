@@ -371,9 +371,12 @@ function renderApprovals() {
             <small>Status: ${variant.status}</small>
             ${
               variant.draft
-                ? `<small>Meta draft: Campaign ${variant.draft.campaignId} / Ad Set ${variant.draft.adSetId}</small>`
+                ? `<small>Meta draft: Campaign ${variant.draft.campaignId}${
+                    variant.draft.adSetId ? ` / Ad Set ${variant.draft.adSetId}` : ""
+                  }</small>`
                 : ""
             }
+            ${variant.draft?.note ? `<small>${variant.draft.note}</small>` : ""}
           </div>
           <div class="approval-actions">
             <button class="approve" type="button" data-action="approved" ${variant.status !== "pending" ? "disabled" : ""}>Approve</button>
