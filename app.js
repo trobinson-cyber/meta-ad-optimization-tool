@@ -144,6 +144,23 @@ const creativeFields = {
 };
 const defaultEvents = ["Purchase", "Lead", "Subscribe", "Schedule"];
 let metaPages = [];
+let imageLibrary = [
+  {
+    name: "Analytics workspace",
+    source: "Starter library",
+    url: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    name: "Creative planning",
+    source: "Starter library",
+    url: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    name: "Campaign review",
+    source: "Starter library",
+    url: "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80",
+  },
+];
 
 function getSelectedAccount() {
   return accounts.find((account) => account.id === selectedAccountId);
@@ -331,6 +348,86 @@ function updateAdPreview() {
   document.querySelector("#previewDomain").textContent = host;
   document.querySelector("#previewCta").textContent = creative.cta.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
   document.querySelector("#previewImage").style.backgroundImage = `url("${creative.imageUrl}")`;
+}
+
+function renderImageLibrary() {
+  const library = document.querySelector("#imageLibrary");
+  library.innerHTML = imageLibrary
+    .map(
+      (image, index) => `
+        <article class="library-image">
+          <button type="button" data-image-index="${index}">
+            <div class="library-thumb" style="background-image: url('${image.url}')"></div>
+            <strong>${image.name}</strong>
+            <small>${image.source}</small>
+          </button>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function useLibraryImage(index) {
+  const image = imageLibrary[index];
+  if (!image) return;
+  creativeFields.imageUrl.value = image.url;
+  updateAdPreview();
+  showToast(`${image.name} loaded into the ad designer.`);
+}
+
+function saveCurrentImageUrl() {
+  const url = creativeFields.imageUrl.value.trim();
+  if (!url) {
+    showToast("Paste an image URL first.");
+    return;
+  }
+
+  imageLibrary.unshift({
+    name: creativeFields.headline.value || "Saved image",
+    source: "Manual URL",
+    url,
+  });
+  renderImageLibrary();
+  showToast("Image URL saved to the library.");
+}
+
+async function generateCreativeImage() {
+  const button = document.querySelector("#generateImage");
+  const creative = getCreativeDesign();
+  const guidelines = document.querySelector("#guidelines").value;
+
+  button.disabled = true;
+  button.textContent = "Generating...";
+
+  try {
+    const response = await fetch("/api/generate-image", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ...creative,
+        guidelines,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || "Image generation failed.");
+    }
+
+    const data = await response.json();
+    imageLibrary.unshift(data.image);
+    creativeFields.imageUrl.value = data.image.url;
+    renderImageLibrary();
+    updateAdPreview();
+    showToast("Generated image added to the library.");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Generate image";
+  }
 }
 
 function renderAccountControls() {
@@ -738,6 +835,13 @@ document.querySelector("#useTopVariant").addEventListener("click", () => {
   setCreativeFromVariant(getSelectedVariants()[0]);
   showToast("Top variant loaded into the ad designer.");
 });
+document.querySelector("#saveImageUrl").addEventListener("click", saveCurrentImageUrl);
+document.querySelector("#generateImage").addEventListener("click", generateCreativeImage);
+document.querySelector("#imageLibrary").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-image-index]");
+  if (!button) return;
+  useLibraryImage(Number(button.dataset.imageIndex));
+});
 Object.values(creativeFields).forEach((field) => {
   field.addEventListener("input", () => {
     if (field === creativeFields.destinationUrl) {
@@ -774,4 +878,5 @@ renderVariants();
 renderApprovals();
 renderRecommendations();
 drawChart();
+renderImageLibrary();
 setCreativeFromVariant(getSelectedVariants()[0]);

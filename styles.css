@@ -585,6 +585,13 @@ textarea {
   grid-column: 1 / -1;
 }
 
+.image-tools {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .ad-preview {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -653,6 +660,53 @@ textarea {
   background: #d8dce2;
   color: #172027;
   font-weight: 850;
+}
+
+.image-library {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.library-image {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+  text-align: left;
+}
+
+.library-image button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+}
+
+.library-thumb {
+  aspect-ratio: 1 / 1;
+  background-size: cover;
+  background-position: center;
+  background-color: #e8eef2;
+}
+
+.library-image strong,
+.library-image small {
+  display: block;
+  padding: 0 10px;
+}
+
+.library-image strong {
+  margin-top: 9px;
+  font-size: 0.86rem;
+}
+
+.library-image small {
+  margin: 4px 0 10px;
+  color: var(--muted);
 }
 
 .chart-wrap {
@@ -740,6 +794,7 @@ canvas {
   .metrics-strip,
   .form-grid,
   .creative-form,
+  .image-library,
   .pipeline,
   .connection-panel,
   .nav-list {
