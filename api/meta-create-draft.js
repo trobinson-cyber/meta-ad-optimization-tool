@@ -61,6 +61,8 @@ module.exports = async function handler(req, res) {
   const body = readBody(req);
   const account = body.account || {};
   const variant = body.variant || {};
+  const page = body.page || {};
+  const destinationUrl = String(body.destinationUrl || "").trim();
   const adAccountId = String(account.metaId || "");
 
   if (!/^act_\d+$/.test(adAccountId)) {
@@ -88,14 +90,16 @@ module.exports = async function handler(req, res) {
 
     const campaign = await metaPost(`${adAccountId}/campaigns`, campaignPayload);
 
-    if (process.env.META_CREATE_ADSET !== "true") {
+    if (!page.id || !destinationUrl) {
       return res.status(200).json({
         draft: {
           campaignId: campaign.id,
           adSetId: null,
+          creativeId: null,
+          adId: null,
           status: "PAUSED",
           name: campaignName,
-          note: "Paused campaign draft created. Set META_CREATE_ADSET=true after adding a Meta Page ID and final targeting.",
+          note: "Paused campaign draft created. Add a Facebook Page and destination URL to create the ad set and ad.",
         },
       });
     }
@@ -123,10 +127,40 @@ module.exports = async function handler(req, res) {
 
     const adSet = await metaPost(`${adAccountId}/adsets`, adSetPayload);
 
+    const creative = await metaPost(`${adAccountId}/adcreatives`, {
+      name: `Draft Creative - ${variant.headline || "Variant"}`,
+      object_story_spec: JSON.stringify({
+        page_id: page.id,
+        link_data: {
+          link: destinationUrl,
+          message: variant.body || "Generated ad copy",
+          name: variant.headline || "Generated ad",
+          description: variant.image || "Generated creative direction",
+          call_to_action: {
+            type: "LEARN_MORE",
+            value: {
+              link: destinationUrl,
+            },
+          },
+        },
+      }),
+    });
+
+    const ad = await metaPost(`${adAccountId}/ads`, {
+      name: `Draft Ad - ${variant.headline || "Variant"}`,
+      adset_id: adSet.id,
+      creative: JSON.stringify({
+        creative_id: creative.id,
+      }),
+      status: "PAUSED",
+    });
+
     return res.status(200).json({
       draft: {
         campaignId: campaign.id,
         adSetId: adSet.id,
+        creativeId: creative.id,
+        adId: ad.id,
         status: "PAUSED",
         name: campaignName,
       },
