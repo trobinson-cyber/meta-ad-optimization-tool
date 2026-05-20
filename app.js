@@ -669,8 +669,18 @@ function switchAccount(accountId) {
   loadPixelsForSelectedAccount();
 }
 
+function openAdsManager() {
+  const account = getSelectedAccount();
+  const accountId = account?.accountId || account?.metaId?.replace("act_", "");
+  const url = accountId
+    ? `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${encodeURIComponent(accountId)}`
+    : "https://adsmanager.facebook.com/adsmanager/manage/campaigns";
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
 document.querySelector("#generateBtn").addEventListener("click", generateVariants);
 document.querySelector("#connectMeta").addEventListener("click", connectMeta);
+document.querySelector("#openAdsManager").addEventListener("click", openAdsManager);
 document.querySelector("#connectDrive").addEventListener("click", connectGoogleDrive);
 document.querySelector("#syncAssets").addEventListener("click", syncGoogleDriveAssets);
 document.querySelector("#analyzeBtn").addEventListener("click", () => {
