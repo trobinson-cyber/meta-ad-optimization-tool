@@ -73,6 +73,7 @@ module.exports = async function handler(req, res) {
       name: campaignName,
       objective: "OUTCOME_TRAFFIC",
       buying_type: "AUCTION",
+      is_ad_set_budget_sharing_enabled: "false",
       status: "PAUSED",
       special_ad_categories: "[]",
     };
