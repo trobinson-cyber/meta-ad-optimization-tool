@@ -41,7 +41,7 @@ module.exports = async function handler(req, res) {
   if (req.method === "GET") {
     return res.status(200).json({
       route: "meta-create-draft",
-      version: "2026-05-20-budget-sharing-v2",
+      version: "2026-05-20-budget-sharing-v3",
       sendsBudgetSharingFlag: true,
     });
   }
@@ -81,7 +81,7 @@ module.exports = async function handler(req, res) {
       name: campaignName,
       objective: "OUTCOME_TRAFFIC",
       buying_type: "AUCTION",
-      is_ad_set_budget_sharing_enabled: "false",
+      is_adset_budget_sharing_enabled: "false",
       status: "PAUSED",
       special_ad_categories: "[]",
     };
