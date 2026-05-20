@@ -1,4 +1,4 @@
-const META_SCOPES = ["ads_read", "business_management"];
+const META_SCOPES = ["ads_read", "ads_management", "business_management"];
 
 module.exports = async function handler(req, res) {
   if (!process.env.META_APP_ID || !process.env.META_REDIRECT_URI) {
